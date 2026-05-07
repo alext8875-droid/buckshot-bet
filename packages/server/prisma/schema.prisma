@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  username  String   @unique
+  avatar    String?
+  createdAt DateTime @default(now())
+
+  wallet                 Wallet?
+  sentFriendRequests     Friendship[] @relation("Sender")
+  receivedFriendRequests Friendship[] @relation("Receiver")
+  gamePlayers            GamePlayer[]
+  otps                   OTP[]
+}
+
+model Wallet {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+  coins  Int    @default(1000)
+
+  transactions Transaction[]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+  type      String
+  amount    Int
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model Friendship {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     String   @default("pending")
+  sender     User     @relation("Sender", fields: [senderId], references: [id])
+  receiver   User     @relation("Receiver", fields: [receiverId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([senderId, receiverId])
+}
+
+model OTP {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model GameSession {
+  id        String   @id @default(cuid())
+  status    String   @default("waiting")
+  betAmount Int
+  pot       Int
+  winnerId  String?
+  gameState Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  players GamePlayer[]
+}
+
+model GamePlayer {
+  id        String      @id @default(cuid())
+  sessionId String
+  userId    String
+  session   GameSession @relation(fields: [sessionId], references: [id])
+  user      User        @relation(fields: [userId], references: [id])
+  result    String?
+
+  @@unique([sessionId, userId])
+}

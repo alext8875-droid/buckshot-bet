@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-950 text-white font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-semibold transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 hover:bg-red-500 active:bg-red-700 text-white;
+  }
+
+  .btn-safe {
+    @apply btn bg-green-700 hover:bg-green-600 active:bg-green-800 text-white;
+  }
+
+  .btn-ghost {
+    @apply btn bg-gray-800 hover:bg-gray-700 active:bg-gray-900 text-gray-200;
+  }
+
+  .btn-primary {
+    @apply btn bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-white border border-gray-600;
+  }
+
+  .card {
+    @apply bg-gray-900 rounded-xl border border-gray-800 p-4;
+  }
+
+  .input {
+    @apply bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 w-full;
+  }
+}
+
+/* Shell glow animations */
+.shell-live {
+  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.7));
+}
+
+.shell-blank {
+  filter: drop-shadow(0 0 6px rgba(22, 163, 74, 0.5));
+}
+
+.hp-heart {
+  transition: all 0.3s ease;
+}
+
+.hp-empty {
+  opacity: 0.2;
+  filter: grayscale(1);
+}
+
+@keyframes gunfire {
+  0% { transform: translateX(0) rotate(0deg); }
+  10% { transform: translateX(-3px) rotate(-2deg); }
+  20% { transform: translateX(3px) rotate(2deg); }
+  30% { transform: translateX(-2px) rotate(-1deg); }
+  40% { transform: translateX(2px) rotate(1deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+
+.animate-gunfire {
+  animation: gunfire 0.4s ease-out;
+}
+
+@keyframes damage-flash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(220, 38, 38, 0.3); }
+}
+
+.animate-damage {
+  animation: damage-flash 0.5s ease;
+}
+
+@keyframes heal-flash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(22, 163, 74, 0.3); }
+}
+
+.animate-heal {
+  animation: heal-flash 0.5s ease;
+}
