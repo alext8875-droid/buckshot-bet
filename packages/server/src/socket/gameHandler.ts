@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { processAction, GameState, Item } from '../game/engine';
 
@@ -97,7 +97,7 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
         // Persist new state
         await prisma.gameSession.update({
           where: { id: sessionId },
-          data: { gameState: newState as unknown as Record<string, unknown> },
+          data: { gameState: newState as unknown as Prisma.InputJsonValue },
         });
 
         // Broadcast to all players in the room
@@ -151,7 +151,7 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
 
         await prisma.gameSession.update({
           where: { id: sessionId },
-          data: { gameState: newState as unknown as Record<string, unknown> },
+          data: { gameState: newState as unknown as Prisma.InputJsonValue },
         });
 
         // For magnifier: only send shell reveal to the acting player

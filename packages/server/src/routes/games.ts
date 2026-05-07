@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import type { Router as RouterType } from 'express';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { initGame } from '../game/engine';
 
@@ -143,7 +143,7 @@ router.post('/:id/join', authMiddleware, async (req: AuthRequest, res: Response)
       data: {
         status: 'active',
         pot: { increment: session.betAmount },
-        gameState: gameState as unknown as Record<string, unknown>,
+        gameState: gameState as unknown as Prisma.InputJsonValue,
         players: {
           create: { userId },
         },
