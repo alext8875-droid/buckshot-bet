@@ -59,10 +59,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     },
   });
 
-  console.log('======================');
-  console.log(`OTP CODE: ${code}`);
-  console.log(`PHONE:    ${phone}`);
-  console.log('======================');
+  process.stderr.write(`\n======================\nOTP CODE: ${code}\nPHONE:    ${phone}\n======================\n`);
 
   res.json({ success: true, message: 'OTP sent (check server console in dev mode)' });
 });
