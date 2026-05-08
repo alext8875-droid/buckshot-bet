@@ -2,7 +2,8 @@ import { io, Socket } from 'socket.io-client';
 
 // In dev the client runs on :5173 and the server on :3001 (separate processes).
 // In production the server serves the client, so they share the same origin.
-const SOCKET_URL = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
+const SOCKET_URL = import.meta.env.VITE_SERVER_URL
+  ?? (import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin);
 
 let socket: Socket | null = null;
 
