@@ -59,9 +59,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     },
   });
 
-  process.stdout.write(`\n======================\nOTP CODE: ${code}\nPHONE:    ${phone}\n======================\n`);
-
-  res.json({ success: true, message: 'OTP sent (check server console in dev mode)' });
+  res.json({ success: true, message: 'OTP sent' });
 });
 
 // POST /api/auth/verify-otp
@@ -177,6 +175,17 @@ router.post('/me', authMiddleware, async (req: AuthRequest, res: Response): Prom
       coins: user.wallet?.coins ?? 0,
     },
   });
+});
+
+// GET /api/auth/dev-otps — returns recent OTPs for dev/testing (no auth required)
+router.get('/dev-otps', async (_req: Request, res: Response): Promise<void> => {
+  const otps = await prisma.oTP.findMany({
+    where: { expiresAt: { gt: new Date() } },
+    orderBy: { expiresAt: 'desc' },
+    take: 20,
+    select: { phone: true, code: true, used: true, expiresAt: true },
+  });
+  res.json(otps);
 });
 
 export { router as authRouter };
