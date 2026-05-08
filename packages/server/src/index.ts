@@ -47,6 +47,10 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/test', (_req, res) => {
+  res.json({ ok: true });
+});
+
 // Socket.io
 io.on('connection', (socket) => {
   console.log(`[Socket] Client connected: ${socket.id}`);

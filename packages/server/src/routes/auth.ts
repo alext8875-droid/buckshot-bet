@@ -39,6 +39,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
 
   const phone = normalizePhone(parsed.data.phone);
   const code = generateOTP();
+  console.error('OTP CODE:', code);
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
   // Invalidate old OTPs for this phone
@@ -58,6 +59,8 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
       userId: existingUser?.id ?? null,
     },
   });
+
+  console.log(`[OTP] Phone: ${phone} Code: ${code}`);
 
   res.json({ success: true, message: 'OTP sent' });
 });

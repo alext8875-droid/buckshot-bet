@@ -136,6 +136,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setupListeners: (onInvite) => {
     connectSocket();
     const socket: Socket = getSocket();
+    socket.emit('join_user_room');
 
     const handleStateUpdate = (data: {
       sessionId: string;
