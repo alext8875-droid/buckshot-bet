@@ -37,11 +37,13 @@ function HPHearts({ hp, maxHp }: { hp: number; maxHp: number }) {
 
 function ShellRack({
   shellCount,
+  roundShellTotal,
   totalVisible,
   revealedShell,
   isCurrentPlayer,
 }: {
   shellCount: { live: number; blank: number };
+  roundShellTotal: number;
   totalVisible: number;
   revealedShell: 'live' | 'blank' | null;
   isCurrentPlayer: boolean;
@@ -53,13 +55,17 @@ function ShellRack({
     return '❓';
   });
 
+  const isRoundStart = shellCount.live + shellCount.blank === roundShellTotal;
+
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="text-sm text-gray-400 font-medium">
-        Shells: <span className="text-red-400">{shellCount.live} live</span>
-        {' · '}
-        <span className="text-green-400">{shellCount.blank} blank</span>
-      </div>
+      {isRoundStart && (
+        <div className="text-sm text-gray-400 font-medium">
+          Shells: <span className="text-red-400">{shellCount.live} live</span>
+          {' · '}
+          <span className="text-green-400">{shellCount.blank} blank</span>
+        </div>
+      )}
       <div className="flex flex-wrap gap-1 justify-center">
         {shells.map((shell, i) => (
           <span key={i} className="text-2xl" title={i === 0 && revealedShell ? `Next: ${revealedShell}` : 'Unknown'}>
@@ -348,6 +354,7 @@ export default function GamePage() {
             <div className="text-4xl">🔫</div>
             <ShellRack
               shellCount={gameState.shellCount}
+              roundShellTotal={gameState.roundShellTotal}
               totalVisible={totalShells}
               revealedShell={revealedShell}
               isCurrentPlayer={isMyTurn}

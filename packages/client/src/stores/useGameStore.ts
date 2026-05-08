@@ -31,6 +31,7 @@ export interface GameState {
   currentPlayerIndex: number;
   shells: Shell[];
   shellCount: { live: number; blank: number };
+  roundShellTotal: number;
   round: number;
   phase: 'shooting' | 'item' | 'finished';
   winner: string | null;

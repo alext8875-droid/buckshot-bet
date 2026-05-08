@@ -17,11 +17,12 @@ export interface GameState {
   currentPlayerIndex: number;
   shells: Shell[];
   shellCount: { live: number; blank: number };
+  roundShellTotal: number; // total shells when round started — hide ratio once any shell is consumed
   round: number;
   phase: 'shooting' | 'item' | 'finished';
   winner: string | null;
   lastAction: GameAction | null;
-  sawNextShell: boolean; // did current player use magnifier this turn
+  sawNextShell: boolean;
 }
 
 export interface GameAction {
@@ -57,13 +58,15 @@ export function generateShells(): Shell[] {
   return shells;
 }
 
-function dealItems(player: PlayerState): void {
-  const itemCount = Math.floor(Math.random() * 3) + 1; // 1–3 items per round
+function dealItems(player: PlayerState): PlayerState {
+  const itemCount = Math.floor(Math.random() * 3) + 1;
+  const items = [...player.items];
   for (let i = 0; i < itemCount; i++) {
-    if (player.items.length < MAX_ITEMS_PER_PLAYER) {
-      player.items.push(ALL_ITEMS[Math.floor(Math.random() * ALL_ITEMS.length)]);
+    if (items.length < MAX_ITEMS_PER_PLAYER) {
+      items.push(ALL_ITEMS[Math.floor(Math.random() * ALL_ITEMS.length)]);
     }
   }
+  return { ...player, items };
 }
 
 export function initGame(
@@ -95,15 +98,13 @@ export function initGame(
     handcuffed: false,
   };
 
-  dealItems(player1);
-  dealItems(player2);
-
   return {
     sessionId,
-    players: [player1, player2],
+    players: [dealItems(player1), dealItems(player2)],
     currentPlayerIndex: 0,
     shells,
     shellCount: { live: liveCount, blank: blankCount },
+    roundShellTotal: shells.length,
     round: 1,
     phase: 'shooting',
     winner: null,
@@ -117,14 +118,12 @@ function reloadShells(state: GameState): GameState {
   const liveCount = newShells.filter((s) => s === 'live').length;
   const blankCount = newShells.filter((s) => s === 'blank').length;
 
-  // Deal new items to both players
-  dealItems(state.players[0]);
-  dealItems(state.players[1]);
-
   return {
     ...state,
+    players: [dealItems(state.players[0]), dealItems(state.players[1])],
     shells: newShells,
     shellCount: { live: liveCount, blank: blankCount },
+    roundShellTotal: newShells.length,
     round: state.round + 1,
     sawNextShell: false,
   };
