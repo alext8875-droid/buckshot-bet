@@ -59,8 +59,10 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     },
   });
 
-  // Mock SMS — log to console
-  console.log(`[OTP] Phone: ${phone} Code: ${code}`);
+  console.log('======================');
+  console.log(`OTP CODE: ${code}`);
+  console.log(`PHONE:    ${phone}`);
+  console.log('======================');
 
   res.json({ success: true, message: 'OTP sent (check server console in dev mode)' });
 });
