@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 // POST /api/games/create
 router.post('/create', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const schema = z.object({
-    betAmount: z.number().int().min(10).max(500),
+    betAmount: z.number().int().min(10).max(10000),
     opponentId: z.string(),
   });
 

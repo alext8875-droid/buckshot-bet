@@ -25,7 +25,7 @@ interface GameHistoryItem {
   players: { userId: string; username: string; avatar: string | null; result: string | null }[];
 }
 
-const BET_AMOUNTS = [10, 25, 50, 100, 250, 500];
+const BET_PRESETS = [10, 25, 50, 100, 200];
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -36,6 +36,8 @@ export default function HomePage() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [betAmount, setBetAmount] = useState(50);
+  const [customBet, setCustomBet] = useState('');
+  const [isCustom, setIsCustom] = useState(false);
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [history, setHistory] = useState<GameHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -179,7 +181,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">Challenge a Friend</h2>
               <button
-                onClick={() => { setShowChallenge(false); setSelectedFriend(null); }}
+                onClick={() => { setShowChallenge(false); setSelectedFriend(null); setIsCustom(false); setCustomBet(''); }}
                 className="text-gray-500 hover:text-white text-xl"
               >
                 ×
@@ -225,12 +227,12 @@ export default function HomePage() {
                 Bet Amount: <span className="text-yellow-400 font-bold">🪙 {betAmount}</span>
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {BET_AMOUNTS.map((amount) => (
+                {BET_PRESETS.map((amount) => (
                   <button
                     key={amount}
-                    onClick={() => setBetAmount(amount)}
+                    onClick={() => { setBetAmount(amount); setIsCustom(false); setCustomBet(''); }}
                     className={`py-2 rounded-lg text-sm font-semibold transition-colors ${
-                      betAmount === amount
+                      !isCustom && betAmount === amount
                         ? 'bg-red-700 text-white'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
@@ -238,7 +240,33 @@ export default function HomePage() {
                     {amount}
                   </button>
                 ))}
+                <button
+                  onClick={() => { setIsCustom(true); setCustomBet(String(betAmount)); }}
+                  className={`py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    isCustom
+                      ? 'bg-red-700 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  Custom
+                </button>
               </div>
+              {isCustom && (
+                <input
+                  type="number"
+                  min={10}
+                  max={10000}
+                  value={customBet}
+                  onChange={(e) => {
+                    setCustomBet(e.target.value);
+                    const parsed = parseInt(e.target.value, 10);
+                    if (!isNaN(parsed) && parsed >= 10) setBetAmount(parsed);
+                  }}
+                  placeholder="Enter amount (min 10)"
+                  className="input mt-2"
+                  autoFocus
+                />
+              )}
               {wallet && betAmount > wallet.coins && (
                 <p className="text-red-400 text-xs mt-2">Insufficient coins (you have {wallet.coins})</p>
               )}

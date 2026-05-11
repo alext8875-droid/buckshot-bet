@@ -57,7 +57,9 @@ interface GameStore {
   actionLog: string[];
   gameOver: GameOverInfo | null;
   pendingInvite: GameInvite | null;
-  revealedShell: Shell | null; // magnifier reveal for current player
+  revealedShell: Shell | null;
+  pot: number | null;
+  betAmount: number | null;
 
   setGameState: (state: GameState, action?: GameAction) => void;
   setGameOver: (info: GameOverInfo) => void;
@@ -80,19 +82,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameOver: null,
   pendingInvite: null,
   revealedShell: null,
+  pot: null,
+  betAmount: null,
 
   setGameState: (state, action) => {
     const logs = get().actionLog;
     const newLog = action?.result ? [action.result, ...logs].slice(0, 50) : logs;
 
-    // Track magnifier reveal
     let revealedShell = get().revealedShell;
-    if (action?.type === 'use_item' && action.item === 'magnifier' && action.shell) {
-      revealedShell = action.shell;
-    }
-    // Clear reveal when a new shot is fired
-    if (action?.type === 'shoot_self' || action?.type === 'shoot_opponent') {
-      revealedShell = null;
+    if (action?.type === 'use_item') {
+      if (action.item === 'magnifier' && action.shell) {
+        revealedShell = action.shell;
+      } else if (action.item === 'beer') {
+        revealedShell = null; // ejected the peeked shell
+      } else if (action.item === 'inverter' && revealedShell) {
+        revealedShell = revealedShell === 'live' ? 'blank' : 'live'; // flip the known shell
+      }
+    } else if (!state.sawNextShell) {
+      revealedShell = null; // shell consumed or round changed
     }
 
     set({ gameState: state, actionLog: newLog, revealedShell });
@@ -105,7 +112,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setRevealedShell: (shell) => set({ revealedShell: shell }),
 
   clearGame: () =>
-    set({ gameState: null, actionLog: [], gameOver: null, revealedShell: null }),
+    set({ gameState: null, actionLog: [], gameOver: null, revealedShell: null, pot: null, betAmount: null }),
 
   joinGameRoom: (sessionId) => {
     connectSocket();
@@ -143,7 +150,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       sessionId: string;
       gameState: GameState;
       action?: GameAction;
+      pot?: number;
+      betAmount?: number;
     }) => {
+      if (data.pot !== undefined) set({ pot: data.pot });
+      if (data.betAmount !== undefined) set({ betAmount: data.betAmount });
       get().setGameState(data.gameState, data.action);
     };
 

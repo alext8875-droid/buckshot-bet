@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGameStore, GameState, PlayerState, Item } from '../stores/useGameStore';
+import { useGameStore, PlayerState, Item } from '../stores/useGameStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import api from '../lib/api';
+import { playLiveShot, playBlankShot, playItem, playGameOver, playReload } from '../lib/sounds';
 
 const ITEM_LABELS: Record<Item, string> = {
   magnifier: '🔍 Magnifier',
@@ -68,7 +69,11 @@ function ShellRack({
       )}
       <div className="flex flex-wrap gap-1 justify-center">
         {shells.map((shell, i) => (
-          <span key={i} className="text-2xl" title={i === 0 && revealedShell ? `Next: ${revealedShell}` : 'Unknown'}>
+          <span
+            key={i}
+            className={`text-2xl ${i === 0 && revealedShell && isCurrentPlayer ? 'animate-shell-reveal' : ''}`}
+            title={i === 0 && revealedShell && isCurrentPlayer ? `Next: ${revealedShell}` : 'Unknown'}
+          >
             {shell}
           </span>
         ))}
@@ -82,13 +87,15 @@ function PlayerPanel({
   isCurrentTurn,
   isMe,
   label,
-  animating,
+  damagePulse,
+  healPulse,
 }: {
   player: PlayerState;
   isCurrentTurn: boolean;
   isMe: boolean;
   label: string;
-  animating: boolean;
+  damagePulse: boolean;
+  healPulse: boolean;
 }) {
   return (
     <div
@@ -96,7 +103,7 @@ function PlayerPanel({
         isCurrentTurn
           ? 'border-red-600 shadow-lg shadow-red-900/30'
           : 'border-gray-800 opacity-80'
-      } ${animating ? 'animate-damage' : ''}`}
+      } ${damagePulse ? 'animate-damage' : ''} ${healPulse ? 'animate-heal' : ''}`}
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase text-gray-500">{label}</span>
@@ -122,15 +129,10 @@ function PlayerPanel({
         </div>
       </div>
 
-      {/* Items */}
       {player.items.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {player.items.map((item, i) => (
-            <span
-              key={i}
-              className="text-lg"
-              title={ITEM_LABELS[item]}
-            >
+            <span key={i} className="text-lg" title={ITEM_LABELS[item]}>
               {ITEM_LABELS[item].split(' ')[0]}
             </span>
           ))}
@@ -144,16 +146,11 @@ function ActionLog({ logs }: { logs: string[] }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (ref.current) {
-      ref.current.scrollTop = 0;
-    }
+    if (ref.current) ref.current.scrollTop = 0;
   }, [logs]);
 
   return (
-    <div
-      ref={ref}
-      className="card h-40 overflow-y-auto space-y-1 bg-gray-950"
-    >
+    <div ref={ref} className="card h-40 overflow-y-auto space-y-1 bg-gray-950">
       <h3 className="text-xs font-semibold text-gray-500 uppercase sticky top-0 bg-gray-950 pb-1">
         Action Log
       </h3>
@@ -161,10 +158,7 @@ function ActionLog({ logs }: { logs: string[] }) {
         <div className="text-gray-600 text-sm">No actions yet...</div>
       ) : (
         logs.map((log, i) => (
-          <div
-            key={i}
-            className={`text-sm ${i === 0 ? 'text-white' : 'text-gray-500'}`}
-          >
+          <div key={i} className={`text-sm ${i === 0 ? 'text-white' : 'text-gray-500'}`}>
             {log}
           </div>
         ))
@@ -175,14 +169,18 @@ function ActionLog({ logs }: { logs: string[] }) {
 
 function GameOverModal({
   gameOver,
-  pot,
   myId,
+  betAmount,
   onLeave,
+  onRematch,
+  rematchLoading,
 }: {
   gameOver: { winner: { id: string; username: string; avatar: string | null }; loser: { id: string; username: string; avatar: string | null }; pot: number };
-  pot: number;
   myId: string;
+  betAmount: number | null;
   onLeave: () => void;
+  onRematch: () => void;
+  rematchLoading: boolean;
 }) {
   const iWon = gameOver.winner.id === myId;
 
@@ -202,18 +200,26 @@ function GameOverModal({
             <span>{gameOver.loser.avatar || '🎭'}</span>
             <span className="font-semibold text-red-400">{gameOver.loser.username}</span>
           </div>
-
-          <div className="text-2xl font-bold text-yellow-400">
-            🪙 {pot} coins
-          </div>
+          <div className="text-2xl font-bold text-yellow-400">🪙 {gameOver.pot} coins</div>
           <div className="text-sm text-gray-400">
-            {iWon ? `+${pot} coins added to your wallet` : `Better luck next time`}
+            {iWon ? `+${gameOver.pot - (betAmount ?? 0)} net coins` : 'Better luck next time'}
           </div>
         </div>
 
-        <button onClick={onLeave} className="btn-ghost w-full py-3">
-          Back to Home
-        </button>
+        <div className="flex gap-3">
+          <button onClick={onLeave} className="btn-ghost flex-1 py-3">
+            Home
+          </button>
+          {betAmount && (
+            <button
+              onClick={onRematch}
+              disabled={rematchLoading}
+              className="btn-danger flex-1 py-3 text-lg"
+            >
+              {rematchLoading ? 'Creating...' : '🔫 Rematch'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -228,6 +234,9 @@ export default function GamePage() {
     actionLog,
     gameOver,
     revealedShell,
+    pot,
+    betAmount,
+    sendInvite,
     joinGameRoom,
     sendAction,
     sendItem,
@@ -236,47 +245,89 @@ export default function GamePage() {
   } = useGameStore();
 
   const [loading, setLoading] = useState(true);
-  const [animatingPlayer, setAnimatingPlayer] = useState<number | null>(null);
+  const [damagePulse, setDamagePulse] = useState<number | null>(null);
+  const [healPulse, setHealPulse] = useState<number | null>(null);
+  const [gunFiring, setGunFiring] = useState(false);
   const [showItemMenu, setShowItemMenu] = useState(false);
+  const [rematchLoading, setRematchLoading] = useState(false);
+  const prevRound = useRef<number | null>(null);
 
   useEffect(() => {
     if (!sessionId) return;
-
     const cleanup = setupListeners(() => {});
-
     joinGameRoom(sessionId);
-
-    // Also fetch current state via REST in case socket reconnect
-    api.get(`/games/history`).catch(() => {});
-
     setLoading(false);
-
-    return () => {
-      cleanup();
-    };
+    return () => cleanup();
   }, [sessionId]);
 
-  // Trigger animation on action
+  // Sound + animation on action
   useEffect(() => {
     if (!gameState?.lastAction) return;
     const action = gameState.lastAction;
+
     if (action.type === 'shoot_self' || action.type === 'shoot_opponent') {
-      const targetIndex =
-        action.type === 'shoot_self'
-          ? gameState.players.findIndex((p) => p.id === action.actorId)
-          : gameState.players.findIndex((p) => p.id === action.targetId);
-      if (targetIndex !== -1 && action.damage && action.damage > 0) {
-        setAnimatingPlayer(targetIndex);
-        setTimeout(() => setAnimatingPlayer(null), 600);
+      const isLive = action.shell === 'live';
+      if (isLive) playLiveShot(); else playBlankShot();
+
+      setGunFiring(true);
+      setTimeout(() => setGunFiring(false), 400);
+
+      if (isLive && action.damage && action.damage > 0) {
+        const targetIndex =
+          action.type === 'shoot_self'
+            ? gameState.players.findIndex((p) => p.id === action.actorId)
+            : gameState.players.findIndex((p) => p.id === action.targetId);
+        if (targetIndex !== -1) {
+          setDamagePulse(targetIndex);
+          setTimeout(() => setDamagePulse(null), 600);
+        }
+      }
+    } else if (action.type === 'use_item' && action.item) {
+      playItem(action.item);
+      if (action.item === 'cigarettes') {
+        const actorIndex = gameState.players.findIndex((p) => p.id === action.actorId);
+        if (actorIndex !== -1) {
+          setHealPulse(actorIndex);
+          setTimeout(() => setHealPulse(null), 600);
+        }
       }
     }
   }, [gameState?.lastAction]);
 
+  // Reload sound when round advances
+  useEffect(() => {
+    if (!gameState) return;
+    if (prevRound.current !== null && gameState.round > prevRound.current) {
+      playReload();
+    }
+    prevRound.current = gameState.round;
+  }, [gameState?.round]);
+
+  // Game over sound
   useEffect(() => {
     if (gameOver) {
+      playGameOver(gameOver.winner.id === (user?.id ?? ''));
       refreshMe();
     }
   }, [gameOver]);
+
+  async function handleRematch() {
+    if (!gameOver || !betAmount || !sessionId) return;
+    const opponentId = gameOver.winner.id === user?.id ? gameOver.loser.id : gameOver.winner.id;
+    try {
+      setRematchLoading(true);
+      const res = await api.post('/games/create', { betAmount, opponentId });
+      const newSessionId = res.data.session.id;
+      sendInvite(newSessionId, opponentId, betAmount);
+      await refreshMe();
+      clearGame();
+      navigate(`/game/${newSessionId}`);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to create rematch');
+      setRematchLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -342,16 +393,16 @@ export default function GamePage() {
           <span className="text-red-500 text-lg">🔫</span>
           <span className="font-bold">Round {gameState.round}</span>
         </div>
-        <div className="text-sm text-gray-500">
-          🪙 {gameState.players[0] ? (gameState as GameState & { betAmount?: number }).betAmount ?? '' : ''} pot
+        <div className="text-sm text-yellow-400 font-semibold">
+          {pot ? `🪙 ${pot} pot` : ''}
         </div>
       </div>
 
       <div className="flex-1 p-4 space-y-4 max-w-2xl mx-auto w-full">
-        {/* Shotgun / Shell display */}
+        {/* Shotgun display */}
         <div className="card bg-gray-900/80 border-gray-700 py-4">
           <div className="flex flex-col items-center gap-3">
-            <div className="text-4xl">🔫</div>
+            <div className={`text-4xl ${gunFiring ? 'animate-gun-recoil' : ''}`}>🔫</div>
             <ShellRack
               shellCount={gameState.shellCount}
               roundShellTotal={gameState.roundShellTotal}
@@ -370,7 +421,8 @@ export default function GamePage() {
               isCurrentTurn={isMyTurn}
               isMe={true}
               label="You"
-              animating={animatingPlayer === myIndex}
+              damagePulse={damagePulse === myIndex}
+              healPulse={healPulse === myIndex}
             />
           )}
           {opponent && (
@@ -379,7 +431,8 @@ export default function GamePage() {
               isCurrentTurn={!isMyTurn}
               isMe={false}
               label="Opponent"
-              animating={animatingPlayer === opponentIndex}
+              damagePulse={damagePulse === opponentIndex}
+              healPulse={healPulse === opponentIndex}
             />
           )}
         </div>
@@ -409,7 +462,6 @@ export default function GamePage() {
               </button>
             </div>
 
-            {/* Items */}
             {me && me.items.length > 0 && (
               <div>
                 <button
@@ -438,20 +490,17 @@ export default function GamePage() {
           </div>
         )}
 
-        {/* Action log */}
         <ActionLog logs={actionLog} />
       </div>
 
-      {/* Game over modal */}
       {gameOver && (
         <GameOverModal
           gameOver={gameOver}
-          pot={gameOver.pot}
           myId={myId}
-          onLeave={() => {
-            clearGame();
-            navigate('/');
-          }}
+          betAmount={betAmount}
+          onLeave={() => { clearGame(); navigate('/'); }}
+          onRematch={handleRematch}
+          rematchLoading={rematchLoading}
         />
       )}
     </div>

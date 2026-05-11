@@ -59,6 +59,8 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
       sessionId,
       gameState: session.gameState,
       status: session.status,
+      pot: session.pot,
+      betAmount: session.betAmount,
     });
   });
 
@@ -105,6 +107,8 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
           sessionId,
           gameState: newState,
           action: resolvedAction,
+          pot: session.pot,
+          betAmount: session.betAmount,
         });
 
         // Handle game over
@@ -161,6 +165,8 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
             sessionId,
             gameState: newState,
             action: resolvedAction,
+            pot: session.pot,
+            betAmount: session.betAmount,
           });
 
           // Send update to others without the sawNextShell info and shell in action
@@ -170,12 +176,16 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
             sessionId,
             gameState: publicState,
             action: publicAction,
+            pot: session.pot,
+            betAmount: session.betAmount,
           });
         } else {
           io.to(sessionId).emit('game_state_update', {
             sessionId,
             gameState: newState,
             action: resolvedAction,
+            pot: session.pot,
+            betAmount: session.betAmount,
           });
         }
 
